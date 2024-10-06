@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"time"
 )
 
 func main() {
@@ -24,8 +26,8 @@ func main() {
 	switch method {
 	case "subscribe":
 		conn := DialServer(*address)
-		SubscribeTopic(conn, *topic)
 		println("Subscribed to", *topic)
+		SubscribeTopic(conn, *topic)
 	case "publish":
 		message := &os.Args[3]
 		if *message == "" {
@@ -33,9 +35,19 @@ func main() {
 			return
 		}
 		conn := DialServer(*address)
-		PublishOnceTopic(conn, *topic, *message)
-		println("Published to", *topic)
+
+		var msg interface{}
+		err := json.Unmarshal([]byte(*message), &msg)
+		if err != nil {
+			fmt.Println("Unable to unmarshal message")
+			return
+		}
+		PublishTopic(conn, *topic, msg, 5*time.Second)
+	case "status":
+		conn := DialServer(*address)
+		println("Subscribed to", *topic)
+		SubscribeStatus(conn, *topic)
 	default:
-		print("unkown method...")
+		print("unknown method...")
 	}
 }
