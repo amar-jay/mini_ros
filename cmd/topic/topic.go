@@ -1,4 +1,4 @@
-package main
+package topic
 
 import (
 	"bufio"
@@ -41,6 +41,7 @@ func handleSubscribe(conn net.Conn, topic string) {
 		println("waiting for message...")
 		message, err := reader.ReadString('\n')
 		if err != nil {
+			// TODO: handle removal of subscriber from subscribers list. After a subscriber disconnects, the server should remove it from the subscribers list.
 			fmt.Println("Server disconnected.")
 			return
 		}
@@ -51,7 +52,6 @@ func handleSubscribe(conn net.Conn, topic string) {
 		}
 
 		_topic, message := m[0], m[1]
-		println(_topic, message)
 		message = strings.TrimSpace(message)
 		if len(message) == 0 {
 			continue
@@ -63,8 +63,8 @@ func handleSubscribe(conn net.Conn, topic string) {
 			fmt.Println("Unmarshal json error", err)
 			continue
 		}
-		if topic == _topic {
-			fmt.Printf("%s > %s", _topic, message)
+		if strings.TrimSpace(_topic) == topic {
+			fmt.Printf("%s > %s\n", _topic, message)
 		}
 	}
 }

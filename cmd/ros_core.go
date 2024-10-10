@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"net"
 	"strconv"
@@ -35,7 +34,7 @@ func (r *RosCore) listen(host string, port int) {
 	}
 	defer ln.Close()
 
-	fmt.Println("Roscore Server listening on port", port)
+	fmt.Printf("roscore server listening on tcp://%s:%d/\n", host, port)
 
 	for {
 		conn, err := ln.Accept()
@@ -75,7 +74,6 @@ func (r *RosCore) HandleConn(conn net.Conn) {
 			r.Subscribe(topic, conn)
 		case "PUBLISH":
 			parts := strings.SplitAfterN(topic, " ", 2)
-			fmt.Println(parts)
 			if len(parts) < 2 {
 				conn.Write([]byte("Invalid publish format. Use: PUBLISH <topic> <message>\n"))
 			} else {
@@ -119,27 +117,21 @@ func (r *RosCore) Subscribe(topic string, conn net.Conn) {
 	// since a topic can have multiple subscribers, we keep track of all the subscribers in a slice.
 	fmt.Println("Client", conn.RemoteAddr(), "subscribed to topic", topic)
 	//fmt.Printf("Subscribers: %d\n", len(r.Subscribers[topic]))
+	/* THERE IS NO NEED TO SEND A MESSAGE TO THE CLIENT THAT THEY HAVE SUBSCRIBED SUCCESSFULLY
 	msg, _ := json.Marshal(map[string]string{
 		"message": "subscribed successfully",
 	})
 
 	conn.Write([]byte(topic + " " + string(msg) + "\n"))
+	*/
 }
 
 func (r *RosCore) Publish(topic string, message []byte) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	fmt.Printf("Published to topic %s message type %T\n", topic, message)
+	fmt.Printf("Published to topic %s (type %T) to %d subscribers\n", topic, message, len(r.Subscribers))
 	//fmt.Printf("%s ---- %d %d\n", topic, len(r.Subscribers[topic]), len(r.Subscribers["/hello"]))
 	for _, conn := range r.Subscribers[topic] {
 		conn.Write([]byte(topic + " " + string(message) + "\n"))
 	}
-}
-
-func main() {
-	port := flag.Int("port", 11311, "ROS master port")
-	host := flag.String("url", "", "ROS Master URL")
-	flag.Parse()
-	r := NewRosCore()
-	r.listen(*host, *port)
 }

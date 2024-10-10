@@ -1,4 +1,4 @@
-package main
+package topic
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func main() {
+func _main() {
 	// get first argument
 	method := os.Args[1]
 	topic := &os.Args[2]
