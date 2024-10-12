@@ -12,7 +12,7 @@ import (
 
 type RosCore struct {
 	mu          sync.RWMutex
-	Subscribers map[string][]net.Conn
+	Subscribers map[string][]net.Conn // map of topic to subscribers (connections)
 }
 
 func NewRosCore() *RosCore {
@@ -61,17 +61,23 @@ func (r *RosCore) HandleConn(conn net.Conn) {
 		message = strings.TrimSpace(message)
 		tokens := strings.SplitN(message, " ", 2)
 
-		if len(tokens) < 2 {
+		var command, topic string
+		if len(tokens) == 2 {
+			command, topic = tokens[0], tokens[1]
+		} else if len(tokens) == 1 {
+			command = tokens[0]
+		} else {
 			conn.Write([]byte("Invalid command\n"))
+			println("Invalid command", message)
 			continue
 		}
-
-		command, topic := tokens[0], tokens[1]
 		//println(len(r.Subscribers[topic]), "Subscribers", topic, " ", command)
 
 		switch command {
 		case "SUBSCRIBE":
 			r.Subscribe(topic, conn)
+		case "UNSUBSCRIBE":
+			r.Unsubscribe(topic, conn)
 		case "PUBLISH":
 			parts := strings.SplitAfterN(topic, " ", 2)
 			if len(parts) < 2 {
@@ -103,6 +109,20 @@ func (r *RosCore) HandleConn(conn net.Conn) {
 			}
 
 			conn.Write([]byte(string(st) + "\n"))
+
+		case "LIST":
+			//println("Number of Subscribers: ", len(r.Subscribers[topic]))
+			topics := make([]string, 0, len(r.Subscribers))
+			for t := range r.Subscribers {
+				topics = append(topics, t)
+			}
+			st, err := json.Marshal(topics)
+			if err != nil {
+				fmt.Println("Error marshalling status")
+				return
+			}
+
+			conn.Write([]byte(string(st) + "\n"))
 		default:
 			conn.Write([]byte("Unknown command\n"))
 		}
@@ -124,6 +144,25 @@ func (r *RosCore) Subscribe(topic string, conn net.Conn) {
 
 	conn.Write([]byte(topic + " " + string(msg) + "\n"))
 	*/
+}
+
+func (r *RosCore) Unsubscribe(topic string, conn net.Conn) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i, c := range r.Subscribers[topic] {
+		if c == conn {
+			r.Subscribers[topic] = append(r.Subscribers[topic][:i], r.Subscribers[topic][i+1:]...)
+			fmt.Println("Client", conn.RemoteAddr(), "unsubscribed from topic", topic)
+			break
+		}
+
+	}
+
+	// if empty delete
+	if len(r.Subscribers[topic]) == 0 {
+		delete(r.Subscribers, topic)
+	}
+	//conn.Write([]byte("Unsubscribed from " + topic + " successfully\n"))
 }
 
 func (r *RosCore) Publish(topic string, message []byte) {

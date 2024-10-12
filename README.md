@@ -2,6 +2,26 @@ This is a lightweight reimplementation of core ROS concepts, focusing on `roscor
 
 This aims to mimic the essential behavior of ROS in a minimalistic way, making it easier to understand the underlying mechanisms while maintaining flexibility and performance due to Go’s concurrency model.
 
+| commands  | purposes                                        |
+| --------- | ----------------------------------------------- |
+| core      | To start roscore server on master url as in ROS |
+| subscribe | To subscribe to a topic                         |
+| publish   | To publish a topic                              |
+| status    | To get stats of a topic                         |
+
+### TODO
+
+- [x] ROS core
+- [x] Publish topic
+- [x] Subscribe to topic
+- [x] get topic metrics
+- [x] better CLI
+- [ ] Create more realistic topic `/cmd_vel` or `/raw_image`
+- [x] ROS Node
+- [x] ROS simple client library
+- [ ] ROS service
+- [ ] ROS launch file
+
 ```
 NAME:
    mini_ros - a simple ROS implementation in Go for educational purposes
@@ -73,23 +93,3 @@ OPTIONS:
    --help, -h                              show help
 
 ```
-
-| commands  | purposes                                        |
-| --------- | ----------------------------------------------- |
-| core      | To start roscore server on master url as in ROS |
-| subscribe | To subscribe to a topic                         |
-| publish   | To publish a topic                              |
-| status    | To get stats of a topic                         |
-
-### TODO
-
-- [x] ROS core
-- [x] Publish topic
-- [x] Subscribe to topic
-- [x] get topic metrics
-- [x] better CLI
-- [ ] Create more realistic topic `/cmd_vel` or `/raw_image`
-- [ ] ROS Node
-- [ ] ROS simple client library
-- [ ] ROS service
-- [ ] ROS launch file
