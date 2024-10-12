@@ -6,7 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/amar-jay/mini_ros/cmd/topic"
+	"github.com/amar-jay/mini_ros/core"
+	"github.com/amar-jay/mini_ros/topic"
 	"github.com/urfave/cli/v2"
 )
 
@@ -39,8 +40,8 @@ func main() {
 					host := cCtx.String("host")
 					port := cCtx.Int("port")
 
-					r := NewRosCore()
-					r.listen(host, port)
+					r := core.NewRosCore()
+					r.Listen(host, port)
 					return nil
 				},
 			},

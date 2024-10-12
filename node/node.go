@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/amar-jay/mini_ros/cmd/topic"
+	"github.com/amar-jay/mini_ros/topic"
 )
 
 type Node struct {
