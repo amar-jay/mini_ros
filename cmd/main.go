@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"reflect"
 	"time"
 
 	"github.com/amar-jay/mini_ros/core"
@@ -13,6 +14,12 @@ import (
 )
 
 func main() {
+
+	demoMsg := new(msgs.DemoMsg)
+	demoMsg.Message = "Hello Mini ROS!"
+
+	demoMsgBytes, _ := json.Marshal(demoMsg)
+
 	app := &cli.App{
 		Name:                 "mini_ros",
 		EnableBashCompletion: true,
@@ -27,14 +34,12 @@ func main() {
 						Name:  "port",
 						Value: "11311",
 						Usage: "ROS master port",
-						//Required: true,
 					},
 
 					&cli.StringFlag{
 						Name:  "host",
 						Value: "0.0.0.0",
 						Usage: "ROS master host",
-						//Required: true,
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
@@ -62,7 +67,6 @@ func main() {
 						Aliases: []string{"add", "a"},
 						Value:   "localhost:11311",
 						Usage:   "ROS master host",
-						//Required: true,
 					},
 				},
 				Subcommands: []*cli.Command{
@@ -76,9 +80,8 @@ func main() {
 							&cli.StringFlag{
 								Name:    "message",
 								Aliases: []string{"msg"},
-								Value:   "{\"message\": \"hello_world\"}",
+								Value:   string(demoMsgBytes),
 								Usage:   "Message to send",
-								//Required: true,
 							},
 							&cli.BoolFlag{
 								Name:    "once",
@@ -108,7 +111,6 @@ func main() {
 								for {
 									topic.Publish(conn, cCtx.Args().Get(0), msg)
 									time.Sleep(5 * time.Second)
-
 								}
 							}
 
@@ -125,8 +127,13 @@ func main() {
 								log.Fatal("Topic name is required")
 							}
 							conn := topic.DialServer(cCtx.String("address"))
-							msg := struct{ message string }{}
-							topic.Subscribe(conn, cCtx.Args().Get(0), msg, func(topic string, message msgs.ROS_MSG) {})
+							msg := msgs.DemoMsg{}
+							_topic := cCtx.Args().Get(0)
+							callback := func() {
+								log.Printf("%s>%s (type:%s)\n", _topic, msg.Message, reflect.TypeOf(msg))
+							}
+
+							topic.Subscribe(conn, _topic, &msg, callback)
 							return nil
 						},
 					},
@@ -157,12 +164,6 @@ func main() {
 				},
 			},
 		},
-		/*
-			Action: func(*cli.Context) error {
-				fmt.Println("Invalid command. Use 'publish', 'subscribe', or 'status'")
-				return nil
-			},
-		*/
 	}
 
 	if err := app.Run(os.Args); err != nil {

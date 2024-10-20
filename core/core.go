@@ -91,23 +91,35 @@ func (r *RosCore) HandleConn(conn net.Conn) {
 	}
 }
 
-func (r *RosCore) Subscribe(topic string, _type string, conn net.Conn) {
+func (r *RosCore) Subscribe(topic_type string, _type string, conn net.Conn) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	parts := strings.SplitAfterN(topic_type, " ", 2)
+	if len(parts) < 2 {
+		conn.Write([]byte("Invalid publish format. Use: SUBSCRIBE <topic> <type>\n"))
+		return
+	}
+	topic, _type := parts[0], parts[1]
+	_type = strings.TrimSpace(_type)
+	topic = strings.TrimSpace(topic)
+
 	r.Subscribers[topic] = append(r.Subscribers[topic], conn)
-	r.Types[topic] = _type // TODO: implement type checking
+	if r.Types[topic] != "" && _type != r.Types[topic] {
+		conn.Write([]byte("Invalid message type format. Use: SUBSCRIBE <topic> " + r.Types[topic] + "\n"))
+		return
+	}
+	if r.Types[topic] == "" {
+		r.Types[topic] = _type
+	}
 
 	// since a topic can have multiple subscribers, we keep track of all the subscribers in a slice.
-	fmt.Println("Client", conn.RemoteAddr(), "subscribed to topic", topic)
+	fmt.Println("Client", conn.RemoteAddr(), "subscribed to topic", topic, "type", _type)
 	// there is no need to send a message to the client that they have subscribed successfully
-	/*
-		msg, _ := json.Marshal(map[string]string{
-			"message": "subscribed successfully",
-		})
-
-		conn.Write([]byte(topic + " " + string(msg) + "\n"))
-	*/
+	msg, _ := json.Marshal(map[string]string{
+		"message": "subscribed successfully",
+	})
+	conn.Write([]byte(topic + " " + string(msg) + "\n"))
 }
 
 func (r *RosCore) Unsubscribe(topic string, conn net.Conn) {
@@ -119,14 +131,14 @@ func (r *RosCore) Unsubscribe(topic string, conn net.Conn) {
 			fmt.Println("Client", conn.RemoteAddr(), "unsubscribed from topic", topic)
 			break
 		}
-
 	}
-	delete(r.Types, topic)
 
 	// if empty delete
 	if len(r.Subscribers[topic]) == 0 {
 		delete(r.Subscribers, topic)
 	}
+
+	delete(r.Types, topic)
 	// no need to send a message to the client that they have unsubscribed successfully
 }
 
@@ -141,15 +153,8 @@ func (r *RosCore) Publish(topic_message string, conn net.Conn) {
 		topic, message := parts[0], parts[1]
 		message = strings.TrimSpace(message)
 		topic = strings.TrimSpace(topic)
-		/*
-			var msg interface{}
-			err = json.Unmarshal([]byte(message), &msg)
-			if err != nil {
-				panic(err)
-			}
-			fmt.Printf("%s> %v\n", topic, msg)
-		*/
-		fmt.Printf("Published to topic %s (type %T) to %d subscribers\n", topic, message, len(r.Subscribers))
+
+		// fmt.Printf("Published to topic %s to %d subscribers\n", topic, len(r.Subscribers))
 		for _, conn := range r.Subscribers[topic] {
 			conn.Write([]byte(topic + " " + string(message) + "\n"))
 		}
@@ -172,7 +177,6 @@ func (r *RosCore) Status(topic string, conn net.Conn) {
 }
 
 func (r *RosCore) List(conn net.Conn) {
-	//println("Number of Subscribers: ", len(r.Subscribers[topic]))
 	topics := make([]t.Topic, 0, len(r.Subscribers))
 	for _t := range r.Subscribers {
 		topics = append(topics, t.Topic{Name: _t}) // that is to assume list does not need to know the type

@@ -13,11 +13,10 @@ import (
 type Node struct {
 	Name       string
 	onshutdown func()
-	callback   func(topic string, message msgs.ROS_MSG) // for subscribers
+	callback   func() // to listen for messages
 	conn       net.Conn
 }
 
-/** To create a new node */
 func Init(name string) *Node {
 
 	n := &Node{
@@ -43,7 +42,7 @@ func (n *Node) OnShutdown(f func()) {
 	n.onshutdown = f
 }
 
-func (n *Node) Callback(f func(topic string, message msgs.ROS_MSG)) {
+func (n *Node) Callback(f func()) {
 	n.callback = f
 }
 func (p *Node) Publish(_topic string, msg interface{}) {
@@ -54,31 +53,3 @@ func (p *Node) Publish(_topic string, msg interface{}) {
 func (s *Node) Subscribe(_topic string, msg msgs.ROS_MSG) {
 	topic.Subscribe(s.conn, _topic, msg, s.callback)
 }
-
-/*
- TODO: until there is a need to have different publishers and subscribers, there is no need for generics
-
-type Publisher[T any] struct {
-	Topic string
-	Msg   T
-	*Node
-}
-
-type Subscriber[T any] struct {
-	Topic string
-	Msg   T
-	*Node
-}
-
-func (p *Publisher[T]) Publish(_topic string, msg T) {
-	println("publishing message: ", msg)
-	topic.Publish(p.conn, _topic, msg, p.rate)
-}
-
-func (s *Subscriber[T]) Subscribe(_topic string, msg T) {
-	c := func() {
-		println("subscribing to topic: ", _topic)
-	}
-	topic.Subscribe(s.conn, _topic, msg, c)
-}
-*/
