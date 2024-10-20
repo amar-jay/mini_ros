@@ -6,13 +6,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/amar-jay/mini_ros/msgs"
 	"github.com/amar-jay/mini_ros/topic"
 )
 
 type Node struct {
 	Name       string
 	onshutdown func()
-	callback   func() // for subscribers
+	callback   func(topic string, message msgs.ROS_MSG) // for subscribers
 	conn       net.Conn
 }
 
@@ -42,7 +43,7 @@ func (n *Node) OnShutdown(f func()) {
 	n.onshutdown = f
 }
 
-func (n *Node) Callback(f func()) {
+func (n *Node) Callback(f func(topic string, message msgs.ROS_MSG)) {
 	n.callback = f
 }
 func (p *Node) Publish(_topic string, msg interface{}) {
@@ -50,7 +51,7 @@ func (p *Node) Publish(_topic string, msg interface{}) {
 	topic.Publish(p.conn, _topic, msg)
 }
 
-func (s *Node) Subscribe(_topic string, msg interface{}) {
+func (s *Node) Subscribe(_topic string, msg msgs.ROS_MSG) {
 	topic.Subscribe(s.conn, _topic, msg, s.callback)
 }
 

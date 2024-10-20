@@ -8,23 +8,23 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	t "github.com/amar-jay/mini_ros/topic"
 )
 
 // hmmm! A synchronous map will be more useful here. However, this is just a simple example
 type RosCore struct {
 	mu          sync.RWMutex
 	Subscribers map[string][]net.Conn // map of topic to subscribers (connections)
+	Types       map[string]string     // ros topic types map
 }
 
 func NewRosCore() *RosCore {
 	return &RosCore{
 		mu:          sync.RWMutex{},
 		Subscribers: make(map[string][]net.Conn),
+		Types:       make(map[string]string),
 	}
-}
-
-type Status struct {
-	Subscribers map[string]int `json:"subscribers"`
 }
 
 func (r *RosCore) Listen(host string, port int) {
@@ -55,7 +55,7 @@ func (r *RosCore) HandleConn(conn net.Conn) {
 		// Read the incoming message from the client
 		message, err := reader.ReadString('\n')
 		if err != nil {
-			//fmt.Println("Client disconnected:", conn.RemoteAddr())
+			// most likely the client disconnected, so we close the connection, else user must reconnect
 			break
 		}
 
@@ -72,78 +72,41 @@ func (r *RosCore) HandleConn(conn net.Conn) {
 			println("Invalid command", message)
 			continue
 		}
-		//println(len(r.Subscribers[topic]), "Subscribers", topic, " ", command)
 
+		_type := "unknown"
 		switch command {
 		case "SUBSCRIBE":
-			r.Subscribe(topic, conn)
+			r.Subscribe(topic, _type, conn)
 		case "UNSUBSCRIBE":
 			r.Unsubscribe(topic, conn)
 		case "PUBLISH":
-			parts := strings.SplitAfterN(topic, " ", 2)
-			if len(parts) < 2 {
-				conn.Write([]byte("Invalid publish format. Use: PUBLISH <topic> <message>\n"))
-			} else {
-				topic, message := parts[0], parts[1]
-				message = strings.TrimSpace(message)
-				topic = strings.TrimSpace(topic)
-				/*
-					var msg interface{}
-					err = json.Unmarshal([]byte(message), &msg)
-					if err != nil {
-						panic(err)
-					}
-					fmt.Printf("%s> %v\n", topic, msg)
-				*/
-				r.Publish(topic, []byte(message))
-			}
+			r.Publish(topic, conn)
 		case "STATUS":
-			//println("Number of Subscribers: ", len(r.Subscribers[topic]))
-			status := Status{Subscribers: map[string]int{topic: len(r.Subscribers[topic])}}
-			for t, conns := range r.Subscribers {
-				status.Subscribers[t] = len(conns)
-			}
-			st, err := json.Marshal(status)
-			if err != nil {
-				fmt.Println("Error marshalling status")
-				return
-			}
-
-			conn.Write([]byte(string(st) + "\n"))
-
+			r.Status(topic, conn)
 		case "LIST":
-			//println("Number of Subscribers: ", len(r.Subscribers[topic]))
-			topics := make([]string, 0, len(r.Subscribers))
-			for t := range r.Subscribers {
-				topics = append(topics, t)
-			}
-			st, err := json.Marshal(topics)
-			if err != nil {
-				fmt.Println("Error marshalling status")
-				return
-			}
-
-			conn.Write([]byte(string(st) + "\n"))
+			r.List(conn)
 		default:
 			conn.Write([]byte("Unknown command\n"))
 		}
 	}
 }
 
-func (r *RosCore) Subscribe(topic string, conn net.Conn) {
+func (r *RosCore) Subscribe(topic string, _type string, conn net.Conn) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.Subscribers[topic] = append(r.Subscribers[topic], conn)
+	r.Types[topic] = _type // TODO: implement type checking
+
 	// since a topic can have multiple subscribers, we keep track of all the subscribers in a slice.
 	fmt.Println("Client", conn.RemoteAddr(), "subscribed to topic", topic)
-	//fmt.Printf("Subscribers: %d\n", len(r.Subscribers[topic]))
-	/* THERE IS NO NEED TO SEND A MESSAGE TO THE CLIENT THAT THEY HAVE SUBSCRIBED SUCCESSFULLY
-	msg, _ := json.Marshal(map[string]string{
-		"message": "subscribed successfully",
-	})
+	// there is no need to send a message to the client that they have subscribed successfully
+	/*
+		msg, _ := json.Marshal(map[string]string{
+			"message": "subscribed successfully",
+		})
 
-	conn.Write([]byte(topic + " " + string(msg) + "\n"))
+		conn.Write([]byte(topic + " " + string(msg) + "\n"))
 	*/
 }
 
@@ -158,20 +121,67 @@ func (r *RosCore) Unsubscribe(topic string, conn net.Conn) {
 		}
 
 	}
+	delete(r.Types, topic)
 
 	// if empty delete
 	if len(r.Subscribers[topic]) == 0 {
 		delete(r.Subscribers, topic)
 	}
-	//conn.Write([]byte("Unsubscribed from " + topic + " successfully\n"))
+	// no need to send a message to the client that they have unsubscribed successfully
 }
 
-func (r *RosCore) Publish(topic string, message []byte) {
+func (r *RosCore) Publish(topic_message string, conn net.Conn) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	fmt.Printf("Published to topic %s (type %T) to %d subscribers\n", topic, message, len(r.Subscribers))
-	//fmt.Printf("%s ---- %d %d\n", topic, len(r.Subscribers[topic]), len(r.Subscribers["/hello"]))
-	for _, conn := range r.Subscribers[topic] {
-		conn.Write([]byte(topic + " " + string(message) + "\n"))
+
+	parts := strings.SplitAfterN(topic_message, " ", 2)
+	if len(parts) < 2 {
+		conn.Write([]byte("Invalid publish format. Use: PUBLISH <topic> <message>\n"))
+	} else {
+		topic, message := parts[0], parts[1]
+		message = strings.TrimSpace(message)
+		topic = strings.TrimSpace(topic)
+		/*
+			var msg interface{}
+			err = json.Unmarshal([]byte(message), &msg)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("%s> %v\n", topic, msg)
+		*/
+		fmt.Printf("Published to topic %s (type %T) to %d subscribers\n", topic, message, len(r.Subscribers))
+		for _, conn := range r.Subscribers[topic] {
+			conn.Write([]byte(topic + " " + string(message) + "\n"))
+		}
 	}
+}
+
+func (r *RosCore) Status(topic string, conn net.Conn) {
+	status := t.Status{Subscribers: map[string]int{topic: len(r.Subscribers[topic])}, Type: r.Types[topic]}
+	for t, conns := range r.Subscribers {
+		status.Subscribers[t] = len(conns)
+	}
+	st, err := json.Marshal(status)
+	if err != nil {
+		fmt.Println("Error marshalling status")
+		return
+	}
+
+	conn.Write([]byte(string(st) + "\n"))
+
+}
+
+func (r *RosCore) List(conn net.Conn) {
+	//println("Number of Subscribers: ", len(r.Subscribers[topic]))
+	topics := make([]t.Topic, 0, len(r.Subscribers))
+	for _t := range r.Subscribers {
+		topics = append(topics, t.Topic{Name: _t}) // that is to assume list does not need to know the type
+	}
+	st, err := json.Marshal(topics)
+	if err != nil {
+		fmt.Println("Error marshalling status")
+		return
+	}
+
+	conn.Write([]byte(string(st) + "\n"))
 }

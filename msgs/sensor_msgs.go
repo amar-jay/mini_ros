@@ -1,6 +1,14 @@
 package msgs
 
-type Image interface{}
-type Imu interface{}
-type Joy interface{}
-type PointCloud interface{}
+type Image interface {
+	ROS_MSG
+}
+type Imu interface {
+	ROS_MSG
+}
+type Joy interface {
+	ROS_MSG
+}
+type PointCloud interface {
+	ROS_MSG
+}

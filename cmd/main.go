@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/amar-jay/mini_ros/core"
+	"github.com/amar-jay/mini_ros/msgs"
 	"github.com/amar-jay/mini_ros/topic"
 	"github.com/urfave/cli/v2"
 )
@@ -102,9 +103,13 @@ func main() {
 							}
 
 							if cCtx.Bool("once") {
-								topic.PublishOnceTopic(conn, cCtx.Args().Get(0), msg)
+								topic.Publish(conn, cCtx.Args().Get(0), msg)
 							} else {
-								topic.PublishTopic(conn, cCtx.Args().Get(0), msg, 5*time.Second)
+								for {
+									topic.Publish(conn, cCtx.Args().Get(0), msg)
+									time.Sleep(5 * time.Second)
+
+								}
 							}
 
 							return nil
@@ -120,7 +125,8 @@ func main() {
 								log.Fatal("Topic name is required")
 							}
 							conn := topic.DialServer(cCtx.String("address"))
-							topic.SubscribeTopic(conn, cCtx.Args().Get(0))
+							msg := struct{ message string }{}
+							topic.Subscribe(conn, cCtx.Args().Get(0), msg, func(topic string, message msgs.ROS_MSG) {})
 							return nil
 						},
 					},

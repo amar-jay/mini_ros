@@ -13,9 +13,13 @@ func main() {
 		println("shutting down node")
 	})
 
-	node.Callback(func() {
+	node.Callback(func(topic string, message msgs.ROS_MSG) {
+		message, ok := message.(msgs.Quaternion)
+		if !ok {
+			println("failed to cast to Quaternion")
+		}
 		println(time.Now().String(), "callback called")
 	})
-	var t msgs.String
+	var t msgs.Quaternion
 	node.Subscribe("/chatter", t)
 }
