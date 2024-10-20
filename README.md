@@ -1,4 +1,10 @@
-This is a lightweight reimplementation of core ROS concepts, focusing on `roscore` and topic-based communication for subscribing and publishing. Built entirely in Go without external libraries, it mimics essential ROS behavior in a minimalistic way. The `roscore` server manages message exchanges between nodes, while topics enable asynchronous communication.
+<div id="header" align="center">
+   <h1 id="badges">
+            `mini_ros`
+  </h1>
+</div>
+
+This is a lightweight reimplementation of core ROS concepts, focusing on __`roscore`__ and topic-based communication for subscribing and publishing. Built entirely in Go without external libraries, it mimics essential ROS behavior in a minimalistic way. The `roscore` server manages message exchanges between nodes, while topics enable asynchronous communication.
 
 This aims to mimic the essential behavior of ROS in a minimalistic way, making it easier to understand the underlying mechanisms while maintaining flexibility and performance due to Go’s concurrency model.
 
@@ -14,6 +20,7 @@ This aims to mimic the essential behavior of ROS in a minimalistic way, making i
 - [x] ROS core
 - [x] Publish topic
 - [x] Subscribe to topic
+- [x] message types
 - [x] get topic metrics
 - [x] better CLI
 - [ ] Create more realistic topic `/cmd_vel` or `/raw_image`
@@ -22,74 +29,20 @@ This aims to mimic the essential behavior of ROS in a minimalistic way, making i
 - [ ] ROS service
 - [ ] ROS launch file
 
+### HOW TO USE
+
+#### to build it,
+1. *Linux*: simply run. **Note SHELL_TYPE** in Makefile may be different verify it if not working
 ```
-NAME:
-   mini_ros - a simple ROS implementation in Go for educational purposes
-
-USAGE:
-   mini_ros [global options] command [command options]
-
-COMMANDS:
-   core                 start a ROS core server
-   publish, pub         publish a ROS topic
-   subscribe, sub       subscribe to a ROS topic
-   status, stats, stat  get stats of a ROS topic
-   help, h              Shows a list of commands or help for one command
-
-GLOBAL OPTIONS:
-   --help, -h  show help
-
-\---
-
-
-NAME:
-   mini_ros core - start a ROS core server
-
-USAGE:
-   mini_ros core [command options]
-
-OPTIONS:
-   --port value  ROS master port (default: "11311")
-   --host value  ROS master host (default: "0.0.0.0")
-   --help, -h    show help
-
-
-\---
-
-NAME:
-   mini_ros publish - publish a ROS topic
-
-USAGE:
-   mini_ros publish [command options]
-
-OPTIONS:
-   --address value, --add value, -a value  ROS master host (default: "localhost:11311")
-   --message value, --msg value            Message to send (default: "{\"message\": \"hello_world\"}")
-   --once, -o                              Publish message once (default: false)
-   --help, -h                              show help
-
-
-\---
-
-NAME:
-   mini_ros subscribe - subscribe to a ROS topic
-
-USAGE:
-   mini_ros subscribe [command options]
-
-OPTIONS:
-   --address value, --add value, -a value  ROS master host (default: "localhost:11311")
-   --help, -h                              show help
-
-
-NAME:
-   mini_ros status - get stats of a ROS topic
-
-USAGE:
-   mini_ros status [command options]
-
-OPTIONS:
-   --address value, --add value, -a value  ROS master host (default: "localhost:11311")
-   --help, -h                              show help
-
+make build
 ```
+
+2. *MacOs*: change the __SHELL_TYPE__, to location of shell script (ie `~/.bashrc`) in the **Makefile**, then run `make build`
+3. *Windows*: use WSL, and follow Linux setup
+
+#### commands
+You can check it for yourself using. 
+```
+mini_ros --help
+```
+
